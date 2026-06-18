@@ -412,6 +412,10 @@ h1, h2, h3 {
   gap: 0.75rem;
 }
 
+.options-grid-locked {
+  pointer-events: none;
+}
+
 .option-btn {
   display: flex;
   align-items: center;

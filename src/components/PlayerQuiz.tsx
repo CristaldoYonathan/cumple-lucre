@@ -8,9 +8,7 @@ import {
   Gamepad2,
   PartyPopper,
   Sparkles,
-  Timer,
   Trophy,
-  Users,
 } from "lucide-react";
 import { ConfettiBackground } from "./ConfettiBackground";
 import { TimerBar } from "./TimerBar";
@@ -48,7 +46,7 @@ export function PlayerQuiz() {
   const [compressingPhoto, setCompressingPhoto] = useState(false);
   const [timeExpired, setTimeExpired] = useState(false);
   const lastQuestionRef = useRef(-1);
-  const questionStartRef = useRef<number>(0);
+  const answerLockedRef = useRef(false);
 
   const clearSession = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
@@ -58,6 +56,16 @@ export function PlayerQuiz() {
     setTotalPoints(0);
     setCorrectCount(0);
     lastQuestionRef.current = -1;
+    answerLockedRef.current = false;
+  }, []);
+
+  const resetQuestionState = useCallback(() => {
+    answerLockedRef.current = false;
+    setSelectedOption(null);
+    setTimeExpired(false);
+    setSubmitting(false);
+    setError("");
+    setPhase("playing");
   }, []);
 
   useEffect(() => {
@@ -99,10 +107,7 @@ export function PlayerQuiz() {
     if (data.status === "active" && data.question) {
       if (data.currentQuestionIndex !== lastQuestionRef.current) {
         lastQuestionRef.current = data.currentQuestionIndex;
-        questionStartRef.current = Date.now();
-        setSelectedOption(null);
-        setTimeExpired(false);
-        setPhase("playing");
+        resetQuestionState();
       } else if (
         isQuestionTimeExpired(data.questionStartedAt, data.timeLimitSeconds)
       ) {
@@ -112,13 +117,92 @@ export function PlayerQuiz() {
       if (participant) setPhase("lobby");
       else setPhase("register");
     }
-  }, [participant, clearSession]);
+  }, [participant, clearSession, resetQuestionState]);
 
   useEffect(() => {
     fetchState();
     const id = setInterval(fetchState, 1500);
     return () => clearInterval(id);
   }, [fetchState]);
+
+  useEffect(() => {
+    if (phase !== "playing" || !quizState?.questionStartedAt) return;
+
+    const checkExpiry = () => {
+      if (
+        isQuestionTimeExpired(
+          quizState.questionStartedAt,
+          quizState.timeLimitSeconds
+        )
+      ) {
+        setTimeExpired(true);
+      }
+    };
+
+    checkExpiry();
+    const id = setInterval(checkExpiry, 100);
+    return () => clearInterval(id);
+  }, [phase, quizState?.questionStartedAt, quizState?.timeLimitSeconds]);
+
+  const handleTimeUp = useCallback(() => {
+    setTimeExpired(true);
+  }, []);
+
+  const submitAnswer = async (optionIndex: number) => {
+    if (!participant || !quizState?.question) return;
+
+    setSubmitting(true);
+
+    const responseTimeMs = quizState.questionStartedAt
+      ? Date.now() - new Date(quizState.questionStartedAt).getTime()
+      : 0;
+
+    try {
+      const res = await fetch("/api/quiz/answer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          participantId: participant.id,
+          questionIndex: quizState.currentQuestionIndex,
+          selectedOptionIndex: optionIndex,
+          responseTimeMs,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setTotalPoints((p) => p + (data.pointsEarned ?? 0));
+        if (data.isCorrect) setCorrectCount((c) => c + 1);
+        setPhase("answered");
+      } else if (data.error === "Se acabó el tiempo") {
+        setTimeExpired(true);
+      } else {
+        setError(data.error || "No se pudo enviar la respuesta");
+      }
+    } catch {
+      setError("No se pudo enviar la respuesta");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleOptionClick = (optionIndex: number) => {
+    if (!participant || !quizState?.question || phase !== "playing") return;
+    if (answerLockedRef.current || submitting || selectedOption !== null) return;
+
+    if (
+      isQuestionTimeExpired(
+        quizState.questionStartedAt,
+        quizState.timeLimitSeconds
+      )
+    ) {
+      setTimeExpired(true);
+      return;
+    }
+
+    answerLockedRef.current = true;
+    setSelectedOption(optionIndex);
+    void submitAnswer(optionIndex);
+  };
 
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -167,54 +251,18 @@ export function PlayerQuiz() {
     }
   };
 
-  const handleTimeUp = useCallback(() => {
-    setTimeExpired(true);
-  }, []);
-
-  const submitAnswer = async (optionIndex: number) => {
-    if (!participant || !quizState?.question || submitting || timeExpired) return;
-
-    if (
-      isQuestionTimeExpired(
-        quizState.questionStartedAt,
-        quizState.timeLimitSeconds
-      )
-    ) {
-      setTimeExpired(true);
-      return;
-    }
-
-    setSubmitting(true);
-    setSelectedOption(optionIndex);
-
-    const responseTimeMs = Date.now() - questionStartRef.current;
-
-    try {
-      const res = await fetch("/api/quiz/answer", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          participantId: participant.id,
-          questionIndex: quizState.currentQuestionIndex,
-          selectedOptionIndex: optionIndex,
-          responseTimeMs,
-        }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setTotalPoints((p) => p + (data.pointsEarned ?? 0));
-        if (data.isCorrect) setCorrectCount((c) => c + 1);
-        setPhase("answered");
-      } else if (data.error === "Se acabó el tiempo") {
-        setTimeExpired(true);
-        setSelectedOption(null);
-      }
-    } catch {
-      setError("No se pudo enviar la respuesta");
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  const serverExpired =
+    quizState?.questionStartedAt != null &&
+    isQuestionTimeExpired(
+      quizState.questionStartedAt,
+      quizState.timeLimitSeconds
+    );
+  const expired = timeExpired || serverExpired;
+  const optionsLocked =
+    phase === "answered" ||
+    expired ||
+    submitting ||
+    selectedOption !== null;
 
   return (
     <div className="page-wrap">
@@ -333,19 +381,21 @@ export function PlayerQuiz() {
 
           <h2 className="question-text">{quizState.question.text}</h2>
 
-          <div className="options-grid">
+          <div
+            className={`options-grid ${optionsLocked ? "options-grid-locked" : ""}`}
+          >
             {quizState.question.options.map((opt, i) => {
               const colors = ["opt-pink", "opt-yellow", "opt-purple", "opt-blue", "opt-green"];
               const isSelected = selectedOption === i;
-              const disabled =
-                phase === "answered" || submitting || timeExpired;
 
               return (
                 <button
                   key={i}
+                  type="button"
                   className={`option-btn ${colors[i % colors.length]} ${isSelected ? "option-selected" : ""}`}
-                  onClick={() => submitAnswer(i)}
-                  disabled={disabled}
+                  onClick={() => handleOptionClick(i)}
+                  disabled={optionsLocked}
+                  aria-disabled={optionsLocked}
                 >
                   <span className="option-letter">{String.fromCharCode(65 + i)}</span>
                   {opt}
@@ -360,7 +410,11 @@ export function PlayerQuiz() {
             </p>
           )}
 
-          {timeExpired && phase === "playing" && (
+          {submitting && phase === "playing" && selectedOption !== null && (
+            <p className="answered-msg">Enviando tu respuesta...</p>
+          )}
+
+          {expired && phase === "playing" && selectedOption === null && (
             <p className="timeout-msg">⏰ ¡Se acabó el tiempo! Esperá la siguiente...</p>
           )}
         </section>
