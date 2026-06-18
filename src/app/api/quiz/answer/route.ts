@@ -41,10 +41,15 @@ export async function POST(request: NextRequest) {
     }
 
     if (state.questionStartedAt) {
+      const limitMs = state.timeLimitSeconds * 1000;
       const elapsed =
         Date.now() - new Date(state.questionStartedAt).getTime();
-      const limit = state.timeLimitSeconds * 1000 + 2000;
-      if (elapsed > limit) {
+
+      if (elapsed > limitMs) {
+        return NextResponse.json({ error: "Se acabó el tiempo" }, { status: 400 });
+      }
+
+      if (responseTimeMs > limitMs) {
         return NextResponse.json({ error: "Se acabó el tiempo" }, { status: 400 });
       }
     }

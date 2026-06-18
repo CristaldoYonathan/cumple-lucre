@@ -74,8 +74,8 @@ export function AdminPanel() {
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [data, setData] = useState<AdminData | null>(null);
-  const [nextTimeLimit, setNextTimeLimit] = useState(15);
-  const [timeLimitInput, setTimeLimitInput] = useState("15");
+  const [nextTimeLimit, setNextTimeLimit] = useState(20);
+  const [timeLimitInput, setTimeLimitInput] = useState("20");
   const [loading, setLoading] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
   const [activeTab, setActiveTab] = useState<"control" | "results" | "questions">("control");
@@ -237,7 +237,7 @@ export function AdminPanel() {
       />
 
       <header className="hero hero-admin">
-        <h1>🎀 Panel Admin</h1>
+        <h1>🍓 Panel Admin</h1>
         <p className="hero-sub">Quiz de cumpleaños de Lucre</p>
       </header>
 

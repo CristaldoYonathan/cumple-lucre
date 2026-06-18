@@ -2,14 +2,16 @@
 @import "tailwindcss";
 
 :root {
-  --pink: #ff6b9d;
-  --pink-light: #ffb3d0;
+  --pink: #ff4d6d;
+  --pink-light: #ffb3c6;
+  --strawberry: #e11d48;
+  --strawberry-light: #ffe4ec;
   --yellow: #ffd93d;
   --yellow-dark: #f5c400;
   --purple: #c77dff;
   --blue: #6bcbff;
   --green: #6ee7a0;
-  --bg-start: #fff0f6;
+  --bg-start: #fff5f8;
   --bg-end: #fff9e6;
   --card: #ffffff;
   --text: #4a1942;
@@ -82,14 +84,14 @@ h1, h2, h3 {
 
 .hero-badge {
   display: inline-block;
-  background: var(--yellow);
-  color: var(--text);
+  background: var(--strawberry-light);
+  color: var(--strawberry);
   padding: 0.35rem 1rem;
   border-radius: 999px;
   font-weight: 700;
   font-size: 0.9rem;
   margin-bottom: 0.5rem;
-  box-shadow: 0 3px 0 var(--yellow-dark);
+  box-shadow: 0 3px 0 #ffb3c6;
 }
 
 .hero h1 {
@@ -437,7 +439,8 @@ h1, h2, h3 {
 }
 
 .option-btn:disabled {
-  cursor: default;
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .option-letter {
@@ -468,6 +471,13 @@ h1, h2, h3 {
   margin-top: 1.25rem;
   font-weight: 700;
   color: var(--purple);
+}
+
+.timeout-msg {
+  text-align: center;
+  margin-top: 1.25rem;
+  font-weight: 700;
+  color: #e04545;
 }
 
 /* Finished */
@@ -687,6 +697,7 @@ h1, h2, h3 {
 }
 
 .icon-pink { color: var(--pink); }
+.icon-strawberry { color: var(--strawberry); }
 .icon-yellow { color: #e6b800; }
 .icon-purple { color: var(--purple); }
 .icon-warning { color: #e6a800; }

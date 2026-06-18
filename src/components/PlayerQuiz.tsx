@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Cake,
   Camera,
+  Cherry,
   Clock,
   Gamepad2,
   PartyPopper,
@@ -15,6 +15,7 @@ import {
 import { ConfettiBackground } from "./ConfettiBackground";
 import { TimerBar } from "./TimerBar";
 import { formatPoints } from "@/lib/scoring";
+import { isQuestionTimeExpired } from "@/lib/quizTime";
 import { resizeImage } from "@/lib/resizeImage";
 import type { Participant, QuestionPublic } from "@/lib/types";
 
@@ -45,6 +46,7 @@ export function PlayerQuiz() {
   const [correctCount, setCorrectCount] = useState(0);
   const [error, setError] = useState("");
   const [compressingPhoto, setCompressingPhoto] = useState(false);
+  const [timeExpired, setTimeExpired] = useState(false);
   const lastQuestionRef = useRef(-1);
   const questionStartRef = useRef<number>(0);
 
@@ -99,7 +101,12 @@ export function PlayerQuiz() {
         lastQuestionRef.current = data.currentQuestionIndex;
         questionStartRef.current = Date.now();
         setSelectedOption(null);
+        setTimeExpired(false);
         setPhase("playing");
+      } else if (
+        isQuestionTimeExpired(data.questionStartedAt, data.timeLimitSeconds)
+      ) {
+        setTimeExpired(true);
       }
     } else if (data.status === "waiting") {
       if (participant) setPhase("lobby");
@@ -160,8 +167,23 @@ export function PlayerQuiz() {
     }
   };
 
+  const handleTimeUp = useCallback(() => {
+    setTimeExpired(true);
+  }, []);
+
   const submitAnswer = async (optionIndex: number) => {
-    if (!participant || !quizState?.question || submitting) return;
+    if (!participant || !quizState?.question || submitting || timeExpired) return;
+
+    if (
+      isQuestionTimeExpired(
+        quizState.questionStartedAt,
+        quizState.timeLimitSeconds
+      )
+    ) {
+      setTimeExpired(true);
+      return;
+    }
+
     setSubmitting(true);
     setSelectedOption(optionIndex);
 
@@ -182,8 +204,11 @@ export function PlayerQuiz() {
       if (res.ok) {
         setTotalPoints((p) => p + (data.pointsEarned ?? 0));
         if (data.isCorrect) setCorrectCount((c) => c + 1);
+        setPhase("answered");
+      } else if (data.error === "Se acabó el tiempo") {
+        setTimeExpired(true);
+        setSelectedOption(null);
       }
-      setPhase("answered");
     } catch {
       setError("No se pudo enviar la respuesta");
     } finally {
@@ -197,7 +222,7 @@ export function PlayerQuiz() {
 
       <header className="hero">
         <p className="hero-badge">
-          <Cake size={18} className="icon-inline icon-yellow" />
+          <Cherry size={18} className="icon-inline icon-strawberry" />
           Quiz de cumpleaños
         </p>
         <h1>¿Cuánto conocés a Lucre?</h1>
@@ -287,7 +312,7 @@ export function PlayerQuiz() {
           <div className="pulse-dots">
             <span /><span /><span />
           </div>
-          <p className="lobby-hint">La admin va a iniciar el juego cuando estén todos 🎀</p>
+          <p className="lobby-hint">La admin va a iniciar el juego cuando estén todos 🍓</p>
         </section>
       )}
 
@@ -301,6 +326,7 @@ export function PlayerQuiz() {
               <TimerBar
                 startedAt={quizState.questionStartedAt}
                 timeLimitSeconds={quizState.timeLimitSeconds}
+                onTimeUp={handleTimeUp}
               />
             )}
           </div>
@@ -311,7 +337,8 @@ export function PlayerQuiz() {
             {quizState.question.options.map((opt, i) => {
               const colors = ["opt-pink", "opt-yellow", "opt-purple", "opt-blue", "opt-green"];
               const isSelected = selectedOption === i;
-              const disabled = phase === "answered" || submitting;
+              const disabled =
+                phase === "answered" || submitting || timeExpired;
 
               return (
                 <button
@@ -331,6 +358,10 @@ export function PlayerQuiz() {
             <p className="answered-msg">
               ✅ ¡Respuesta enviada! Esperá la siguiente...
             </p>
+          )}
+
+          {timeExpired && phase === "playing" && (
+            <p className="timeout-msg">⏰ ¡Se acabó el tiempo! Esperá la siguiente...</p>
           )}
         </section>
       )}

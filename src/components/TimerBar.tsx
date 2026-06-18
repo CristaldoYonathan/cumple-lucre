@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface TimerBarProps {
   startedAt: string;
@@ -14,38 +14,44 @@ export function TimerBar({
   onTimeUp,
 }: TimerBarProps) {
   const [remaining, setRemaining] = useState(timeLimitSeconds);
-  const [fired, setFired] = useState(false);
+  const firedRef = useRef(false);
+  const onTimeUpRef = useRef(onTimeUp);
 
   useEffect(() => {
-    setFired(false);
+    onTimeUpRef.current = onTimeUp;
+  }, [onTimeUp]);
+
+  useEffect(() => {
+    firedRef.current = false;
     const tick = () => {
       const elapsed = (Date.now() - new Date(startedAt).getTime()) / 1000;
       const left = Math.max(0, timeLimitSeconds - elapsed);
       setRemaining(left);
-      if (left <= 0 && !fired) {
-        setFired(true);
-        onTimeUp?.();
+      if (left <= 0 && !firedRef.current) {
+        firedRef.current = true;
+        onTimeUpRef.current?.();
       }
     };
     tick();
     const id = setInterval(tick, 100);
     return () => clearInterval(id);
-  }, [startedAt, timeLimitSeconds, onTimeUp, fired]);
+  }, [startedAt, timeLimitSeconds]);
 
-  const pct = (remaining / timeLimitSeconds) * 100;
+  const pct = timeLimitSeconds > 0 ? (remaining / timeLimitSeconds) * 100 : 0;
   const urgent = remaining <= 5;
+  const expired = remaining <= 0;
 
   return (
     <div className="timer-wrap">
       <div className="timer-label">
         <span>⏱️ Tiempo</span>
         <span className={urgent ? "timer-urgent" : ""}>
-          {Math.ceil(remaining)}s
+          {expired ? "0s" : `${Math.ceil(remaining)}s`}
         </span>
       </div>
       <div className="timer-track">
         <div
-          className={`timer-fill ${urgent ? "timer-fill-urgent" : ""}`}
+          className={`timer-fill ${urgent || expired ? "timer-fill-urgent" : ""}`}
           style={{ width: `${pct}%` }}
         />
       </div>

@@ -13,12 +13,12 @@ export default function Icon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "linear-gradient(135deg, #ff6b9d 0%, #ffd93d 100%)",
+          background: "linear-gradient(135deg, #ff4d6d 0%, #ffb3c6 100%)",
           borderRadius: 8,
           fontSize: 20,
         }}
       >
-        🎂
+        🍓
       </div>
     ),
     { ...size }

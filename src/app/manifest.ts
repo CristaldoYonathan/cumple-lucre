@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Quiz de cumpleaños para Lucrecia",
     start_url: "/",
     display: "standalone",
-    background_color: "#fff0f6",
-    theme_color: "#ff6b9d",
+    background_color: "#fff5f8",
+    theme_color: "#ff4d6d",
     lang: "es",
     icons: [
       {

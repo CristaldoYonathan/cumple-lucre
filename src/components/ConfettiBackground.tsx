@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-const CONFETTI = ["🎀", "🎂", "🎈", "✨", "🌸", "💛", "🎉", "⭐", "💖", "🦋"];
+const CONFETTI = ["🍓", "🎀", "🎂", "🎈", "✨", "💛", "🎉", "⭐", "💖", "🦋"];
 
 export function ConfettiBackground() {
   const [pieces, setPieces] = useState<
